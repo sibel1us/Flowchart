@@ -5,8 +5,16 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Flowchart"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="800" Width="1200">
     <Grid>
-        
+        <local:Diagram
+            VerticalAlignment="Stretch"
+            Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}"
+            Rows="6"
+            Columns="4">
+            <local:Node BackgroundColor="Green" Column="0" Row="0" RowSpan="3"/>
+            <local:Node BackgroundColor="Red" Column="1" Row="1" ColumnSpan="2"/>
+            <local:Node BackgroundColor="Yellow" Column="2" Row="3" ColumnSpan="2" RowSpan="2"/>
+        </local:Diagram>
     </Grid>
 </Window>
