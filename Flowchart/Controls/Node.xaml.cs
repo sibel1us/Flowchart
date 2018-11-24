@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -29,7 +30,11 @@ namespace Flowchart
         public bool IsDragged
         {
             get => Diagram.DraggedNode == this;
-            set => Diagram.DraggedNode = (value ? this : null);
+            set
+            {
+                Panel.SetZIndex(this, value ? 999 : 0);
+                Diagram.DraggedNode = (value ? this : null);
+            }
         }
 
         public int Row
@@ -124,19 +129,30 @@ namespace Flowchart
         {
             if (IsDraggable && !IsDragged && e.LeftButton == MouseButtonState.Pressed)
             {
+                int prevRow = Row;
+                int prevCol = Column;
+
                 IsDragged = true;
-                Opacity = 0.5;
 
                 DataObject data = new DataObject();
                 data.SetData(nameof(Node), this);
                 DragDropEffects result = DragDrop.DoDragDrop(this, data, DragDropEffects.Move);
 
-                Opacity = 16;
                 IsDragged = false;
+                
+                // Return to original position if drag wasn't completed
+                if (result != DragDropEffects.Move)
+                {
+                    Row = prevRow;
+                    Column = prevCol;
+                }
             }
         }
     }
 
+    /// <summary>
+    /// Provides data for changes in <see cref="Node.RowSpan"/> and <see cref="Node.ColumnSpan"/>.
+    /// </summary>
     public class NodeDimensionsChangedEventArgs
     {
         public NodeDimensionsChangedEventArgs(int rowDelta, int columnDelta)
@@ -149,6 +165,9 @@ namespace Flowchart
         public int ColumnDelta { get; }
     }
 
+    /// <summary>
+    /// Provides data for changes in <see cref="Node.Row"/> and <see cref="Node.Column"/>.
+    /// </summary>
     public class NodePositionChangedEventArgs
     {
         public NodePositionChangedEventArgs(int rowDelta, int columnDelta)
@@ -159,5 +178,22 @@ namespace Flowchart
 
         public int RowDelta { get; }
         public int ColumnDelta { get; }
+    }
+
+    /// <summary>
+    /// Gets an opacity value depending on if a node is being dragged. If a dragged node is not
+    /// the node in index 0, a lower opacity is returned.
+    /// </summary>
+    public class NodeNotDraggedConverter : IMultiValueConverter
+    {
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        {
+            return (values[1] == null || values[0] == values[1]) ? 1.0 : 0.5;
+        }
+
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+        {
+            return new Node[] { null, null };
+        }
     }
 }

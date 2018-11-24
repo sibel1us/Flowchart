@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -20,11 +21,10 @@ namespace Flowchart
     /// Interaction logic for Diagram.xaml
     /// </summary>
     [ContentProperty(nameof(Children))]
-    public partial class Diagram : UserControl
+    public partial class Diagram : UserControl, INotifyPropertyChanged
     {
-        public Node DraggedNode { get; set; }
-
         public event EventHandler<DiagramGridChangedEventArgs> DiagramSizeChanged;
+        public event PropertyChangedEventHandler PropertyChanged;
 
         /// <summary>
         /// Children of the root grid.
@@ -33,6 +33,20 @@ namespace Flowchart
         {
             get { return (UIElementCollection)GetValue(ChildrenProperty.DependencyProperty); }
             private set { SetValue(ChildrenProperty, value); }
+        }
+
+        private Node _draggedNode = null;
+        public Node DraggedNode
+        {
+            get => _draggedNode;
+            set
+            {
+                if (value != _draggedNode)
+                {
+                    _draggedNode = value;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DraggedNode)));
+                }
+            }
         }
 
         /// <summary>
@@ -108,40 +122,20 @@ namespace Flowchart
                 typeof(Diagram),
                 new PropertyMetadata());
 
-        private void RootGrid_DragEnter(object sender, DragEventArgs e)
-        {
-            Node node = (Node)e.Data.GetData(nameof(Node));
-
-            UpdatePreviewPosition(e);
-        }
-
-        private void RootGrid_DragOver(object sender, DragEventArgs e)
-        {
-            UpdatePreviewPosition(e);
-        }
-
-        private void RootGrid_DragLeave(object sender, DragEventArgs e)
-        {
-        }
 
         private void RootGrid_Drop(object sender, DragEventArgs e)
         {
-            Node node = (Node)e.Data.GetData(nameof(Node));
-            Point gridPosition = GetPositionInGrid(e.GetPosition(RootGrid));
-
-            node.Column = (int)gridPosition.X - (node.ColumnSpan - 1);
-            node.Row = (int)gridPosition.Y;
+            UpdateDragDrop(sender, e);
+            // TODO: handle size constraints
         }
 
-        private void UpdatePreviewPosition(DragEventArgs e)
+        private void UpdateDragDrop(object sender, DragEventArgs e)
         {
             Node node = (Node)e.Data.GetData(nameof(Node));
             Point gridPosition = GetPositionInGrid(e.GetPosition(RootGrid));
 
             node.Column = (int)gridPosition.X - (node.ColumnSpan - 1);
             node.Row = (int)gridPosition.Y;
-            node.ColumnSpan = node.ColumnSpan;
-            node.RowSpan = node.RowSpan;
         }
 
         /// <summary>

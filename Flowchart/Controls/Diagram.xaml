@@ -11,9 +11,7 @@
           Background="Transparent"
           
           AllowDrop="True"
-          DragEnter="RootGrid_DragEnter"
-          DragLeave="RootGrid_DragLeave"
-          DragOver="RootGrid_DragOver"
+          DragOver="UpdateDragDrop"
           Drop="RootGrid_Drop">
     </Grid>
 </UserControl>
