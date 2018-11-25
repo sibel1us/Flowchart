@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -26,15 +27,6 @@ namespace Flowchart
         public event EventHandler<DiagramGridChangedEventArgs> DiagramSizeChanged;
         public event PropertyChangedEventHandler PropertyChanged;
 
-        /// <summary>
-        /// Children of the root grid.
-        /// </summary>
-        public UIElementCollection Children
-        {
-            get { return (UIElementCollection)GetValue(ChildrenProperty.DependencyProperty); }
-            private set { SetValue(ChildrenProperty, value); }
-        }
-
         private Node _draggedNode = null;
         public Node DraggedNode
         {
@@ -50,6 +42,25 @@ namespace Flowchart
         }
 
         /// <summary>
+        /// Children of the root grid.
+        /// </summary>
+        public UIElementCollection Children
+        {
+            get { return (UIElementCollection)GetValue(ChildrenProperty.DependencyProperty); }
+            private set { SetValue(ChildrenProperty, value); }
+        }
+
+        /// <summary>
+        /// Binds the diagram's children to <see cref="RootGrid"/>'s children.
+        /// </summary>
+        public static readonly DependencyPropertyKey ChildrenProperty =
+            DependencyProperty.RegisterReadOnly(
+                nameof(Children),
+                typeof(UIElementCollection),
+                typeof(Diagram),
+                new PropertyMetadata());
+
+        /// <summary>
         /// Amount of grid rows in the diagram.
         /// </summary>
         public int Rows
@@ -57,16 +68,12 @@ namespace Flowchart
             get => RootGrid.RowDefinitions.Count;
             set
             {
-                if (value < 1)
-                    return;
-
-                // TODO
-                if (value > 64)
-                    return;
+                value = Math.Max(value, 1);
+                value = Math.Min(value, Properties.Settings.Default.MaxDiagramHeight);
 
                 int delta = value - Rows;
+
                 if (delta == 0) return;
-                DiagramSizeChanged?.Invoke(this, new DiagramGridChangedEventArgs(delta, 0));
 
                 if (delta > 0)
                     for (int i = 0; i < delta; i++)
@@ -75,6 +82,8 @@ namespace Flowchart
                 else
                     for (int i = 0; i < -delta; i++)
                         RootGrid.RowDefinitions.RemoveAt(Rows - 1);
+
+                DiagramSizeChanged?.Invoke(this, new DiagramGridChangedEventArgs(delta, 0));
             }
         }
 
@@ -86,16 +95,12 @@ namespace Flowchart
             get => RootGrid.ColumnDefinitions.Count;
             set
             {
-                if (value < 1)
-                    return;
-
-                // TODO
-                if (value > 64)
-                    return;
+                value = Math.Max(value, 1);
+                value = Math.Min(value, Properties.Settings.Default.MaxDiagramWidth);
 
                 int delta = value - Columns;
+
                 if (delta == 0) return;
-                DiagramSizeChanged?.Invoke(this, new DiagramGridChangedEventArgs(0, delta));
 
                 if (delta > 0)
                     for (int i = 0; i < delta; i++)
@@ -104,31 +109,37 @@ namespace Flowchart
                 else
                     for (int i = 0; i < -delta; i++)
                         RootGrid.ColumnDefinitions.RemoveAt(Columns - 1);
+
+                DiagramSizeChanged?.Invoke(this, new DiagramGridChangedEventArgs(0, delta));
             }
         }
 
+        /// <summary>
+        /// Initializes a new diagram.
+        /// </summary>
         public Diagram()
         {
             InitializeComponent();
             DataContext = this;
             Children = RootGrid.Children;
         }
-
-        // Source: https://stackoverflow.com/a/9186486/
-        public static readonly DependencyPropertyKey ChildrenProperty =
-            DependencyProperty.RegisterReadOnly(
-                nameof(Children),
-                typeof(UIElementCollection),
-                typeof(Diagram),
-                new PropertyMetadata());
-
-
+        
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void RootGrid_Drop(object sender, DragEventArgs e)
         {
             UpdateDragDrop(sender, e);
             // TODO: handle size constraints
         }
 
+        /// <summary>
+        /// Updates node position and layout while dragging.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void UpdateDragDrop(object sender, DragEventArgs e)
         {
             Node node = (Node)e.Data.GetData(nameof(Node));

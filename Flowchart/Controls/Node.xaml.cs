@@ -24,9 +24,14 @@ namespace Flowchart
         public event EventHandler<NodeDimensionsChangedEventArgs> NodeDimensionsChanged;
         public event EventHandler<NodePositionChangedEventArgs> NodePositionChanged;
 
+        /// <summary>
+        /// The diagram this node belongs to.
+        /// </summary>
         public Diagram Diagram => (Diagram)((Grid)this.Parent).Parent;
 
-        public bool IsDraggable { get; set; } = true;
+        /// <summary>
+        /// Whether this node is currently being dragged (<see cref="Diagram.DraggedNode"/> equals this node).
+        /// </summary>
         public bool IsDragged
         {
             get => Diagram.DraggedNode == this;
@@ -37,110 +42,124 @@ namespace Flowchart
             }
         }
 
+        /// <summary>
+        /// Zero-based index of the node in parent grid's rows.
+        /// </summary>
         public int Row
         {
             get => Grid.GetRow(this);
             set
             {
-                if (value < 0)
-                    return;
-
-                // TODO
-                if (value >= 64)
-                    return;
+                value = Math.Max(value, 0);
+                value = Math.Min(value, Diagram.Rows - 1);
 
                 int delta = value - Row;
                 if (delta == 0) return;
+
                 NodePositionChanged?.Invoke(this, new NodePositionChangedEventArgs(delta, 0));
                 Grid.SetRow(this, value);
             }
         }
 
+        /// <summary>
+        /// Zero-based index of the node in parent grid's columns.
+        /// </summary>
         public int Column
         {
             get => Grid.GetColumn(this);
             set
             {
-                if (value < 0)
-                    return;
-
-                // TODO
-                if (value >= 64)
-                    return;
+                value = Math.Max(value, 0);
+                value = Math.Min(value, Diagram.Columns - 1);
 
                 int delta = value - Column;
                 if (delta == 0) return;
+
                 NodePositionChanged?.Invoke(this, new NodePositionChangedEventArgs(0, delta));
                 Grid.SetColumn(this, value);
             }
         }
 
-        public int ColumnSpan
-        {
-            get => Grid.GetColumnSpan(this);
-            set
-            {
-                if (value < 1)
-                    return;
-
-                // TODO
-                if (value > 64)
-                    return;
-
-                int delta = value - ColumnSpan;
-                if (delta == 0) return;
-                NodeDimensionsChanged?.Invoke(this, new NodeDimensionsChangedEventArgs(0, delta));
-                Grid.SetColumnSpan(this, value);
-            }
-        }
-
+        /// <summary>
+        /// Height of the node in cells.
+        /// </summary>
         public int RowSpan
         {
             get => Grid.GetRowSpan(this);
             set
             {
-                if (value < 1)
-                    return;
-
-                // TODO
-                if (value > 64)
-                    return;
+                value = Math.Max(value, 1);
+                value = Math.Min(value, Properties.Settings.Default.MaxNodeHeight);
 
                 int delta = value - RowSpan;
                 if (delta == 0) return;
+
                 NodeDimensionsChanged?.Invoke(this, new NodeDimensionsChangedEventArgs(0, delta));
                 Grid.SetRowSpan(this, value);
             }
         }
 
+        /// <summary>
+        /// Width of the node in cells.
+        /// </summary>
+        public int ColumnSpan
+        {
+            get => Grid.GetColumnSpan(this);
+            set
+            {
+                value = Math.Max(value, 1);
+                value = Math.Min(value, Properties.Settings.Default.MaxNodeWidth);
+
+                int delta = value - ColumnSpan;
+                if (delta == 0) return;
+
+                NodeDimensionsChanged?.Invoke(this, new NodeDimensionsChangedEventArgs(0, delta));
+                Grid.SetColumnSpan(this, value);
+            }
+        }
+
+        /// <summary>
+        /// Root border's background color.
+        /// </summary>
         public Brush BackgroundColor
         {
             get => Root.Background;
             set => Root.Background = value;
         }
 
+        /// <summary>
+        /// Initializes a new node control.
+        /// </summary>
         public Node()
         {
             InitializeComponent();
             DataContext = this;
         }
 
+        /// <summary>
+        /// Handles the drag & drop behavior for the node.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void Anchor_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (IsDraggable && !IsDragged && e.LeftButton == MouseButtonState.Pressed)
+            if (!IsDragged && e.LeftButton == MouseButtonState.Pressed)
             {
+                // Save the dragged state to not drag other nodes when a drag passes over them.
+                IsDragged = true;
+
                 int prevRow = Row;
                 int prevCol = Column;
 
-                IsDragged = true;
-
+                // TODO: replace the node with a serializable model
                 DataObject data = new DataObject();
                 data.SetData(nameof(Node), this);
+
                 DragDropEffects result = DragDrop.DoDragDrop(this, data, DragDropEffects.Move);
 
                 IsDragged = false;
-                
-                // Return to original position if drag wasn't completed
+
+                // Return to original position if drag didn't complete.
                 if (result != DragDropEffects.Move)
                 {
                     Row = prevRow;
@@ -184,16 +203,46 @@ namespace Flowchart
     /// Gets an opacity value depending on if a node is being dragged. If a dragged node is not
     /// the node in index 0, a lower opacity is returned.
     /// </summary>
-    public class NodeNotDraggedConverter : IMultiValueConverter
+    public class NodeNotDraggedToOpacityConverter : IMultiValueConverter
     {
         public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
-            return (values[1] == null || values[0] == values[1]) ? 1.0 : 0.5;
+            if (values[1] == null || values[0] == values[1])
+            {
+                return Properties.Settings.Default.NodeOpacity;
+            }
+            else
+            {
+                return Properties.Settings.Default.InactiveNodeOpacity;
+            }
         }
 
         public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
         {
             return new Node[] { null, null };
+        }
+    }
+
+    public class ColorBrightnessConverter : IMultiValueConverter
+    {
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        {
+            System.Windows.Media.Effects.PixelShader shader = new System.Windows.Media.Effects.PixelShader();
+
+            SolidColorBrush brush = (SolidColorBrush)values[0];
+            double factor = (double)values[1];
+
+            Color color = brush.Color;
+
+            return new SolidColorBrush(Color.FromRgb(
+                Math.Min((byte)255, (byte)(color.R * factor)),
+                Math.Min((byte)255, (byte)(color.G * factor)),
+                Math.Min((byte)255, (byte)(color.B * factor))));
+        }
+
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+        {
+            return new object[] { new SolidColorBrush(Colors.Transparent), 1.0 };
         }
     }
 }
