@@ -97,7 +97,7 @@ namespace Flowchart.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0.4")]
+        [global::System.Configuration.DefaultSettingValueAttribute("0.3")]
         public double InvalidNodeOpacity {
             get {
                 return ((double)(this["InvalidNodeOpacity"]));

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -114,6 +115,8 @@ namespace Flowchart
             }
         }
 
+        public double NodeMargin { get; set; }
+
         /// <summary>
         /// Initializes a new diagram.
         /// </summary>
@@ -123,7 +126,7 @@ namespace Flowchart
             DataContext = this;
             Children = RootGrid.Children;
         }
-        
+
         /// <summary>
         /// 
         /// </summary>
@@ -131,9 +134,12 @@ namespace Flowchart
         /// <param name="e"></param>
         private void RootGrid_Drop(object sender, DragEventArgs e)
         {
+            _dragHelper = (0, 0, true);
             UpdateDragDrop(sender, e);
             // TODO: handle size constraints
         }
+
+        private (double, double, bool) _dragHelper = (0, 0, true);
 
         /// <summary>
         /// Updates node position and layout while dragging.
@@ -143,10 +149,45 @@ namespace Flowchart
         private void UpdateDragDrop(object sender, DragEventArgs e)
         {
             Node node = (Node)e.Data.GetData(nameof(Node));
-            Point gridPosition = GetPositionInGrid(e.GetPosition(RootGrid));
+            Point gridPos = GetPositionInGrid(e.GetPosition(RootGrid));
 
-            node.Column = (int)gridPosition.X - (node.ColumnSpan - 1);
-            node.Row = (int)gridPosition.Y;
+            var newPos = (gridPos.X, gridPos.Y, false);
+
+            if (newPos.Item1 == _dragHelper.Item1 && newPos.Item2 == _dragHelper.Item2)
+            {
+                if (_dragHelper.Item3) return;
+                else newPos.Item3 = true;
+            }
+
+            _dragHelper = newPos;
+
+            node.Column = (int)gridPos.X - (node.ColumnSpan - 1);
+            node.Row = (int)gridPos.Y;
+
+            UpdateNodeStates(node);
+
+        }
+
+        private void UpdateNodeStates(Node node)
+        {
+            Rect nodePosition = new Rect(
+                node.Column,
+                node.Row,
+                node.ColumnSpan - 1,
+                node.RowSpan - 1);
+
+            foreach (Node other in Children)
+            {
+                if (other == node) continue;
+
+                Rect otherPosition = new Rect(
+                    other.Column,
+                    other.Row,
+                    other.ColumnSpan - 1,
+                    other.RowSpan - 1);
+
+                other.Invalid = nodePosition.IntersectsWith(otherPosition);
+            }
         }
 
         /// <summary>

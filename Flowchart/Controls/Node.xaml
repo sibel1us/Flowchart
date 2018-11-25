@@ -5,41 +5,77 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:system="clr-namespace:System;assembly=mscorlib"
              xmlns:local="clr-namespace:Flowchart"
+             xmlns:icon="http://metro.mahapps.com/winfx/xaml/iconpacks"
              mc:Ignorable="d"
              d:DesignHeight="200" d:DesignWidth="200">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-        <local:NodeNotDraggedToOpacityConverter x:Key="DraggedToOpacity"/>
+        <local:NodeOpacityConverter x:Key="NodeOpacityConverter"/>
         <local:ColorBrightnessConverter x:Key="ColorBrightnessConverter"/>
-        <system:Double x:Key="BorderColorFactor">0.5</system:Double>
+        <system:Double x:Key="HoverColorFactor">1.2</system:Double>
+        <system:Double x:Key="BorderColorFactor">0.4</system:Double>
+        <system:Double x:Key="DefaultColorFactor">1.0</system:Double>
     </UserControl.Resources>
     <UserControl.Opacity>
-        <MultiBinding Converter="{StaticResource DraggedToOpacity}" >
+        <MultiBinding Converter="{StaticResource NodeOpacityConverter}" >
             <Binding RelativeSource="{RelativeSource Self}" Mode="OneTime"/>
-            <Binding Path="Diagram.DraggedNode" Mode="OneWay" />
+            <Binding Path="Diagram.DraggedNode" UpdateSourceTrigger="PropertyChanged"/>
+            <Binding Path="Invalid" UpdateSourceTrigger="PropertyChanged"/>
         </MultiBinding>
     </UserControl.Opacity>
+
     <Border x:Name="Root"
-            BorderThickness="2"
-            CornerRadius="5"
-            Margin="2">
+            BorderThickness="1"
+            Margin="{Binding Path=Diagram.NodeMargin}">
+        <Border.Background>
+            <MultiBinding Converter="{StaticResource ColorBrightnessConverter}">
+                <Binding Path="NodeColor" Mode="OneWay"/>
+                <Binding Source="{StaticResource DefaultColorFactor}"/>
+            </MultiBinding>
+        </Border.Background>
         <Border.BorderBrush>
             <MultiBinding Converter="{StaticResource ColorBrightnessConverter}">
-                <Binding Path="BackgroundColor" Mode="OneWay"/>
+                <Binding Path="NodeColor" Mode="OneWay"/>
                 <Binding Source="{StaticResource BorderColorFactor}"/>
             </MultiBinding>
         </Border.BorderBrush>
-        <Border.Effect>
-            <DropShadowEffect Opacity="0.5"/>
-        </Border.Effect>
-        <Border x:Name="Anchor"
-                CornerRadius="8"
-                Width="16"
-                Height="16"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Top"
-                Background="Black"
-                Margin="8"
-                PreviewMouseMove="Anchor_PreviewMouseMove"/>
+        <Grid>
+            <!--Node Content-->
+            <local:NodeContent Margin="8"/>
+            <StackPanel Orientation="Horizontal"
+                        VerticalAlignment="Top"
+                        HorizontalAlignment="Right"
+                        Width="Auto">
+                <Border x:Name="Edit"
+                        Background="White"
+                        CornerRadius="8"
+                        Width="16"
+                        Height="16"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Margin="0,8,8,0"
+                        PreviewMouseMove="Anchor_PreviewMouseMove">
+                    <icon:PackIconMaterial x:Name="EditIcon"
+                                               Kind="Pencil"
+                                               SnapsToDevicePixels="True"/>
+                </Border>
+                <Border x:Name="Anchor"
+                        Background="White"
+                        CornerRadius="8"
+                        Width="16"
+                        Height="16"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Margin="0,8,8,0"
+                        PreviewMouseMove="Anchor_PreviewMouseMove">
+
+                    <icon:PackIconMaterial x:Name="AnchorIcon"
+                                               Kind="CursorMove"
+                                               SnapsToDevicePixels="True"/>
+
+                </Border>
+            </StackPanel>
+        </Grid>
     </Border>
+
 </UserControl>
