@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Flowchart"
         mc:Ignorable="d"
-        Title="MainWindow" Height="800" Width="1200">
+        Title="MainWindow" SizeToContent="WidthAndHeight">
     <Grid>
         <local:Diagram Width="1000"
                        Height="1000"
@@ -13,7 +13,9 @@
                        Rows="6"
                        Columns="6"
                        NodeMargin="8"
-                       Padding="{Binding NodeMargin}">
+                       Padding="{Binding NodeMargin}"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Top">
             <local:Node NodeColor="LightGreen"
                             Column="0"
                             Row="0"
@@ -28,5 +30,7 @@
                             ColumnSpan="2" 
                             RowSpan="2"/>
         </local:Diagram>
+
+        <Button Click="Button_Click" VerticalAlignment="Bottom" HorizontalAlignment="Right">asdasd</Button>
     </Grid>
 </Window>

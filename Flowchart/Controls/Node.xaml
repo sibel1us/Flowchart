@@ -3,19 +3,60 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:system="clr-namespace:System;assembly=mscorlib"
              xmlns:local="clr-namespace:Flowchart"
              xmlns:icon="http://metro.mahapps.com/winfx/xaml/iconpacks"
+             xmlns:system="clr-namespace:System;assembly=mscorlib"
              mc:Ignorable="d"
              d:DesignHeight="200" d:DesignWidth="200">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <local:NodeOpacityConverter x:Key="NodeOpacityConverter"/>
+        <local:IsFocusedToColorConverter x:Key="IsFocusedToColorConverter"/>
         <local:ColorBrightnessConverter x:Key="ColorBrightnessConverter"/>
         <system:Double x:Key="HoverColorFactor">1.2</system:Double>
         <system:Double x:Key="BorderColorFactor">0.4</system:Double>
         <system:Double x:Key="DefaultColorFactor">1.0</system:Double>
+
+        <Style x:Key="NodeButtonStyle" TargetType="icon:PackIconMaterial">
+            <Style.Resources>
+                <local:DoubleToCornerRadiusConverter x:Key="CircleConverter"/>
+                <SolidColorBrush x:Key="AnchorColorBrush" Color="White"/>
+                <system:Double x:Key="Size">26</system:Double>
+            </Style.Resources>
+            
+            <Setter Property="Width" Value="{StaticResource Size}"/>
+            <Setter Property="Height" Value="{StaticResource Size}"/>
+            <Setter Property="Margin" Value="0,8,8,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="icon:PackIconMaterial">
+                        <Border CornerRadius="{Binding Source={StaticResource Size}, Converter={StaticResource CircleConverter}}"
+                                BorderThickness="1"
+                                Width="{StaticResource Size}"
+                                Height="{StaticResource Size}">
+                            <Border.Background>
+                                <MultiBinding Converter="{StaticResource ColorBrightnessConverter}">
+                                    <Binding Source="{StaticResource AnchorColorBrush}"/>
+                                    <Binding Source="{StaticResource DefaultColorFactor}"/>
+                                </MultiBinding>
+                            </Border.Background>
+                            <Border.BorderBrush>
+                                <MultiBinding Converter="{StaticResource ColorBrightnessConverter}">
+                                    <Binding Source="{StaticResource AnchorColorBrush}"/>
+                                    <Binding Source="{StaticResource BorderColorFactor}"/>
+                                </MultiBinding>
+                            </Border.BorderBrush>
+                            <icon:PackIconMaterial Kind="{TemplateBinding Kind}" 
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   SnapsToDevicePixels="True"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
+    
     <UserControl.Opacity>
         <MultiBinding Converter="{StaticResource NodeOpacityConverter}" >
             <Binding RelativeSource="{RelativeSource Self}" Mode="OneTime"/>
@@ -25,8 +66,16 @@
     </UserControl.Opacity>
 
     <Border x:Name="Root"
+            Focusable="True"
             BorderThickness="1"
-            Margin="{Binding Path=Diagram.NodeMargin}">
+            Margin="{Binding Path=Diagram.NodeMargin}"
+            PreviewMouseMove="Root_PreviewMouseMove"
+            PreviewMouseLeftButtonDown="Root_PreviewMouseLeftButtonDown">
+        <Border.Effect>
+            <DropShadowEffect Opacity="1"
+                              BlurRadius="8"
+                              Color="{Binding ElementName=Root, Path=IsFocused, Converter={StaticResource IsFocusedToColorConverter}}"/>
+        </Border.Effect>
         <Border.Background>
             <MultiBinding Converter="{StaticResource ColorBrightnessConverter}">
                 <Binding Path="NodeColor" Mode="OneWay"/>
@@ -46,36 +95,16 @@
                         VerticalAlignment="Top"
                         HorizontalAlignment="Right"
                         Width="Auto">
-                <Border x:Name="Edit"
-                        Background="White"
-                        CornerRadius="8"
-                        Width="16"
-                        Height="16"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Top"
-                        Margin="0,8,8,0"
-                        PreviewMouseMove="Anchor_PreviewMouseMove">
-                    <icon:PackIconMaterial x:Name="EditIcon"
-                                               Kind="Pencil"
-                                               SnapsToDevicePixels="True"/>
-                </Border>
-                <Border x:Name="Anchor"
-                        Background="White"
-                        CornerRadius="8"
-                        Width="16"
-                        Height="16"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Top"
-                        Margin="0,8,8,0"
-                        PreviewMouseMove="Anchor_PreviewMouseMove">
+                <icon:PackIconMaterial x:Name="EditButton"
+                                       Style="{StaticResource NodeButtonStyle}"
+                                       Kind="Pencil"
+                                       PreviewMouseMove="Anchor_PreviewMouseMove"/>
+                <icon:PackIconMaterial x:Name="AnchorIcon"
+                                       Style="{StaticResource NodeButtonStyle}"
+                                       Kind="CursorMove"
+                                       PreviewMouseMove="Anchor_PreviewMouseMove"/>
 
-                    <icon:PackIconMaterial x:Name="AnchorIcon"
-                                               Kind="CursorMove"
-                                               SnapsToDevicePixels="True"/>
-
-                </Border>
             </StackPanel>
         </Grid>
     </Border>
-
 </UserControl>

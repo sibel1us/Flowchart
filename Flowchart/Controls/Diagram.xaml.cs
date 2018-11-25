@@ -42,6 +42,20 @@ namespace Flowchart
             }
         }
 
+        private Node _resizingNode = null;
+        public Node ResizingNode
+        {
+            get => _resizingNode;
+            set
+            {
+                if (value != _resizingNode)
+                {
+                    _resizingNode = value;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ResizingNode)));
+                }
+            }
+        }
+
         /// <summary>
         /// Children of the root grid.
         /// </summary>
@@ -125,6 +139,20 @@ namespace Flowchart
             InitializeComponent();
             DataContext = this;
             Children = RootGrid.Children;
+        }
+
+        public void ScaleUp()
+        {
+            Rows = Rows * 2;
+            Columns = Columns * 2;
+
+            foreach (Node node in Children)
+            {
+                node.Row *= 2;
+                node.Column *= 2;
+                node.RowSpan *= 2;
+                node.ColumnSpan *= 2;
+            }
         }
 
         /// <summary>

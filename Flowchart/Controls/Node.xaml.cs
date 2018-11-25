@@ -47,6 +47,19 @@ namespace Flowchart
             }
         }
 
+        /// <summary>
+        /// Whether this node is currently being dragged (<see cref="Diagram.DraggedNode"/> equals this node).
+        /// </summary>
+        public bool IsResizing
+        {
+            get => Diagram.ResizingNode == this;
+            set
+            {
+                Panel.SetZIndex(this, value ? 999 : 0);
+                Diagram.ResizingNode = (value ? this : null);
+            }
+        }
+
         private bool _invalid = false;
 
         /// <summary>
@@ -158,12 +171,7 @@ namespace Flowchart
             DataContext = this;
         }
 
-        /// <summary>
-        /// Handles the drag &amp; drop behavior for the node.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Anchor_PreviewMouseMove(object sender, MouseEventArgs e)
+        private void InitiateDrag(MouseEventArgs e)
         {
             if (!IsDragged && e.LeftButton == MouseButtonState.Pressed)
             {
@@ -184,10 +192,30 @@ namespace Flowchart
                 // Return to original position if drag didn't complete.
                 if (result != DragDropEffects.Move)
                 {
-                    Row = prevRow;
-                    Column = prevCol;
+                    //Row = prevRow;
+                    //Column = prevCol;
                 }
             }
+        }
+
+        /// <summary>
+        /// Handles the drag &amp; drop behavior for the node.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Anchor_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            InitiateDrag(e);
+        }
+
+        private void Root_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (!e.Handled) InitiateDrag(e);
+        }
+
+        private void Root_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            Root.Focus();
         }
     }
 
@@ -231,7 +259,6 @@ namespace Flowchart
         {
             Node thisNode = (Node)values[0];
             Node draggedNode = (Node)values[1];
-            Debug.WriteLine(values[2]);
 
             if (draggedNode == null || thisNode == draggedNode)
             {
@@ -278,6 +305,37 @@ namespace Flowchart
         public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
         {
             return new object[] { new SolidColorBrush(Colors.Transparent), 1.0 };
+        }
+    }
+
+    public class DoubleToCornerRadiusConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            return new CornerRadius((double)value / 2);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            return 0.0;
+        }
+    }
+
+    public class IsFocusedToColorConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is bool focused)
+            {
+                return focused ? Colors.DeepSkyBlue : Colors.DarkGray;
+            }
+
+            return Colors.Transparent;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            return false;
         }
     }
 }
