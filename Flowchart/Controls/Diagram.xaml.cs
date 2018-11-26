@@ -56,6 +56,8 @@ namespace Flowchart
             }
         }
 
+        public Image Preview { get; set; }
+
         /// <summary>
         /// Children of the root grid.
         /// </summary>
@@ -155,6 +157,13 @@ namespace Flowchart
             }
         }
 
+        private (double, double, bool) _dragHelper = (0, 0, true);
+
+        private void RootGrid_DragOver(object sender, DragEventArgs e)
+        {
+            UpdateDragDrop(sender, e);
+        }
+
         /// <summary>
         /// 
         /// </summary>
@@ -163,11 +172,10 @@ namespace Flowchart
         private void RootGrid_Drop(object sender, DragEventArgs e)
         {
             _dragHelper = (0, 0, true);
+
             UpdateDragDrop(sender, e);
             // TODO: handle size constraints
         }
-
-        private (double, double, bool) _dragHelper = (0, 0, true);
 
         /// <summary>
         /// Updates node position and layout while dragging.
@@ -176,46 +184,49 @@ namespace Flowchart
         /// <param name="e"></param>
         private void UpdateDragDrop(object sender, DragEventArgs e)
         {
-            Node node = (Node)e.Data.GetData(nameof(Node));
-            Point gridPos = GetPositionInGrid(e.GetPosition(RootGrid));
+            Point mouse = e.GetPosition(RootCanvas);
+            Point relative = (Point)e.Data.GetData("Position");
 
-            var newPos = (gridPos.X, gridPos.Y, false);
+            Canvas.SetLeft(Preview, mouse.X - relative.X);
+            Canvas.SetTop(Preview, mouse.Y - relative.Y);
 
-            if (newPos.Item1 == _dragHelper.Item1 && newPos.Item2 == _dragHelper.Item2)
-            {
-                if (_dragHelper.Item3) return;
-                else newPos.Item3 = true;
-            }
+            //Debug.WriteLine($"{Canvas.GetLeft(Preview)} {Canvas.GetTop(Preview)} ({mouse} {Preview.IsVisible})");
 
-            _dragHelper = newPos;
+            UpdateNodeStates((Node)e.Data.GetData("Node"));
 
-            node.Column = (int)gridPos.X - (node.ColumnSpan - 1);
-            node.Row = (int)gridPos.Y;
+            //Point gridPos = GetPositionInGrid(e.GetPosition(RootGrid));
 
-            UpdateNodeStates(node);
+            //var newPos = (gridPos.X, gridPos.Y, false);
 
+            //if (newPos.Item1 == _dragHelper.Item1 && newPos.Item2 == _dragHelper.Item2)
+            //{
+            //    if (_dragHelper.Item3) return;
+            //    else newPos.Item3 = true;
+            //}
+
+            //_dragHelper = newPos;
         }
 
         private void UpdateNodeStates(Node node)
         {
-            Rect nodePosition = new Rect(
-                node.Column,
-                node.Row,
-                node.ColumnSpan - 1,
-                node.RowSpan - 1);
+            //Rect nodePosition = new Rect(
+            //    node.Column,
+            //    node.Row,
+            //    node.ColumnSpan - 1,
+            //    node.RowSpan - 1);
 
-            foreach (Node other in Children)
-            {
-                if (other == node) continue;
+            //foreach (Node other in Children)
+            //{
+            //    if (other == node) continue;
 
-                Rect otherPosition = new Rect(
-                    other.Column,
-                    other.Row,
-                    other.ColumnSpan - 1,
-                    other.RowSpan - 1);
+            //    Rect otherPosition = new Rect(
+            //        other.Column,
+            //        other.Row,
+            //        other.ColumnSpan - 1,
+            //        other.RowSpan - 1);
 
-                other.Invalid = nodePosition.IntersectsWith(otherPosition);
-            }
+            //    other.Invalid = nodePosition.IntersectsWith(otherPosition);
+            //}
         }
 
         /// <summary>

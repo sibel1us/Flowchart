@@ -32,7 +32,7 @@ namespace Flowchart
         /// <summary>
         /// The diagram this node belongs to.
         /// </summary>
-        public Diagram Diagram => (Diagram)((Grid)this.Parent).Parent;
+        public Diagram Diagram => (Diagram)((Grid)((Grid)this.Parent).Parent).Parent;
 
         /// <summary>
         /// Whether this node is currently being dragged (<see cref="Diagram.DraggedNode"/> equals this node).
@@ -175,19 +175,33 @@ namespace Flowchart
         {
             if (!IsDragged && e.LeftButton == MouseButtonState.Pressed)
             {
+                var bmp = new RenderTargetBitmap((int)this.ActualWidth, (int)this.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+                bmp.Render(Root);
+
+                Diagram.Preview = new Image
+                {
+                    Source = bmp,
+                    IsHitTestVisible = false,
+                    Visibility = Visibility.Visible
+                };
+
+                Diagram.RootCanvas.Children.Add(Diagram.Preview);
+
+                Debug.WriteLine($"{bmp.PixelHeight},{bmp.PixelWidth}");
+
                 // Save the dragged state to not drag other nodes when a drag passes over them.
                 IsDragged = true;
 
-                int prevRow = Row;
-                int prevCol = Column;
-
-                // TODO: replace the node with a serializable model
                 DataObject data = new DataObject();
-                data.SetData(nameof(Node), this);
+                data.SetData("Position", Mouse.GetPosition(this));
+                data.SetData("Node", this);
+
+                //Debug.WriteLine(Mouse.GetPosition(this));
 
                 DragDropEffects result = DragDrop.DoDragDrop(this, data, DragDropEffects.Move);
 
                 IsDragged = false;
+                Diagram.RootCanvas.Children.Remove(Diagram.Preview);
 
                 // Return to original position if drag didn't complete.
                 if (result != DragDropEffects.Move)
@@ -260,13 +274,17 @@ namespace Flowchart
             Node thisNode = (Node)values[0];
             Node draggedNode = (Node)values[1];
 
-            if (draggedNode == null || thisNode == draggedNode)
+            if (draggedNode == null)
             {
                 return Properties.Settings.Default.NodeOpacity;
             }
             else if (thisNode.Invalid == true)
             {
                 return Properties.Settings.Default.InvalidNodeOpacity;
+            }
+            else if (thisNode == draggedNode)
+            {
+                return 0.0;
             }
             else
             {

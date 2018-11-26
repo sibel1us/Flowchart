@@ -10,25 +10,30 @@
         <local:Diagram Width="1000"
                        Height="1000"
                        x:Name="RootDiagram"
-                       Rows="6"
-                       Columns="6"
+                       Rows="8"
+                       Columns="8"
                        NodeMargin="8"
                        Padding="{Binding NodeMargin}"
                        HorizontalAlignment="Right"
                        VerticalAlignment="Top">
             <local:Node NodeColor="LightGreen"
-                            Column="0"
-                            Row="0"
-                            RowSpan="3"/>
+                        Column="0"
+                        Row="0"
+                        RowSpan="3"/>
             <local:Node NodeColor="LightCoral"
-                            Column="1"
-                            Row="1"
-                            ColumnSpan="2"/>
+                        Column="1"
+                        Row="1"
+                        ColumnSpan="2"/>
             <local:Node NodeColor="SkyBlue"
-                            Column="2" 
-                            Row="3" 
-                            ColumnSpan="2" 
-                            RowSpan="2"/>
+                        Column="2" 
+                        Row="3" 
+                        ColumnSpan="2" 
+                        RowSpan="2"/>
+            <local:Node NodeColor="LightGoldenrodYellow"
+                        Column="3" 
+                        Row="0" 
+                        ColumnSpan="1"/>
+
         </local:Diagram>
 
         <Button Click="Button_Click" VerticalAlignment="Bottom" HorizontalAlignment="Right">asdasd</Button>

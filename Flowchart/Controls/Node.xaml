@@ -16,50 +16,11 @@
         <system:Double x:Key="HoverColorFactor">1.2</system:Double>
         <system:Double x:Key="BorderColorFactor">0.4</system:Double>
         <system:Double x:Key="DefaultColorFactor">1.0</system:Double>
-
-        <Style x:Key="NodeButtonStyle" TargetType="icon:PackIconMaterial">
-            <Style.Resources>
-                <local:DoubleToCornerRadiusConverter x:Key="CircleConverter"/>
-                <SolidColorBrush x:Key="AnchorColorBrush" Color="White"/>
-                <system:Double x:Key="Size">26</system:Double>
-            </Style.Resources>
-            
-            <Setter Property="Width" Value="{StaticResource Size}"/>
-            <Setter Property="Height" Value="{StaticResource Size}"/>
-            <Setter Property="Margin" Value="0,8,8,0"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="icon:PackIconMaterial">
-                        <Border CornerRadius="{Binding Source={StaticResource Size}, Converter={StaticResource CircleConverter}}"
-                                BorderThickness="1"
-                                Width="{StaticResource Size}"
-                                Height="{StaticResource Size}">
-                            <Border.Background>
-                                <MultiBinding Converter="{StaticResource ColorBrightnessConverter}">
-                                    <Binding Source="{StaticResource AnchorColorBrush}"/>
-                                    <Binding Source="{StaticResource DefaultColorFactor}"/>
-                                </MultiBinding>
-                            </Border.Background>
-                            <Border.BorderBrush>
-                                <MultiBinding Converter="{StaticResource ColorBrightnessConverter}">
-                                    <Binding Source="{StaticResource AnchorColorBrush}"/>
-                                    <Binding Source="{StaticResource BorderColorFactor}"/>
-                                </MultiBinding>
-                            </Border.BorderBrush>
-                            <icon:PackIconMaterial Kind="{TemplateBinding Kind}" 
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center"
-                                                   SnapsToDevicePixels="True"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
     </UserControl.Resources>
     
     <UserControl.Opacity>
         <MultiBinding Converter="{StaticResource NodeOpacityConverter}" >
-            <Binding RelativeSource="{RelativeSource Self}" Mode="OneTime"/>
+            <Binding RelativeSource="{RelativeSource Self}"/>
             <Binding Path="Diagram.DraggedNode" UpdateSourceTrigger="PropertyChanged"/>
             <Binding Path="Invalid" UpdateSourceTrigger="PropertyChanged"/>
         </MultiBinding>
@@ -89,22 +50,7 @@
             </MultiBinding>
         </Border.BorderBrush>
         <Grid>
-            <!--Node Content-->
             <local:NodeContent Margin="8"/>
-            <StackPanel Orientation="Horizontal"
-                        VerticalAlignment="Top"
-                        HorizontalAlignment="Right"
-                        Width="Auto">
-                <icon:PackIconMaterial x:Name="EditButton"
-                                       Style="{StaticResource NodeButtonStyle}"
-                                       Kind="Pencil"
-                                       PreviewMouseMove="Anchor_PreviewMouseMove"/>
-                <icon:PackIconMaterial x:Name="AnchorIcon"
-                                       Style="{StaticResource NodeButtonStyle}"
-                                       Kind="CursorMove"
-                                       PreviewMouseMove="Anchor_PreviewMouseMove"/>
-
-            </StackPanel>
         </Grid>
     </Border>
 </UserControl>
