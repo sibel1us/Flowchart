@@ -24,7 +24,6 @@ namespace Flowchart
     /// </summary>
     public partial class Node : UserControl, INotifyPropertyChanged
     {
-        private readonly ColorBrightnessConverter colorBrightnessConverter = new ColorBrightnessConverter();
         public event EventHandler<NodeDimensionsChangedEventArgs> NodeDimensionsChanged;
         public event EventHandler<NodePositionChangedEventArgs> NodePositionChanged;
         public event PropertyChangedEventHandler PropertyChanged;
@@ -32,17 +31,7 @@ namespace Flowchart
         /// <summary>
         /// The diagram this node belongs to.
         /// </summary>
-        public Diagram Diagram
-        {
-            get
-            {
-                if (_diagram == null)
-                {
-                    _diagram = (Diagram)((Grid)((Grid)this.Parent).Parent).Parent;
-                }
-                return _diagram;
-            }
-        }
+        public Diagram Diagram => _diagram ?? (_diagram = (Diagram)((Grid)((Grid)this.Parent).Parent).Parent);
         private Diagram _diagram;
 
         /// <summary>
@@ -71,8 +60,6 @@ namespace Flowchart
             }
         }
 
-        private bool _invalid = false;
-
         /// <summary>
         /// Visual state that signals to the user that if the current action is completed, the node will be stashed.
         /// </summary>
@@ -81,10 +68,14 @@ namespace Flowchart
             get => _invalid;
             set
             {
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Invalid)));
-                _invalid = value;
+                if (_invalid != value)
+                {
+                    _invalid = value;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Invalid)));
+                }
             }
         }
+        private bool _invalid = false;
 
         /// <summary>
         /// Zero-based index of the node in parent grid's rows.
@@ -94,6 +85,7 @@ namespace Flowchart
             get => Grid.GetRow(this);
             set
             {
+                // Fix XAML editor error message
                 if (!DesignerProperties.GetIsInDesignMode(this))
                 {
                     value = value.Limit(0, (Diagram?.Rows ?? 1) - RowSpan);
@@ -115,6 +107,7 @@ namespace Flowchart
             get => Grid.GetColumn(this);
             set
             {
+                // Fix XAML editor error message
                 if (!DesignerProperties.GetIsInDesignMode(this))
                 {
                     value = value.Limit(0, (Diagram?.Columns ?? 1) - ColumnSpan);
@@ -345,7 +338,7 @@ namespace Flowchart
         }
     }
 
-    /// <summary>§§
+    /// <summary>
     /// 
     /// </summary>
     public class IsFocusedToColorConverter : IValueConverter
