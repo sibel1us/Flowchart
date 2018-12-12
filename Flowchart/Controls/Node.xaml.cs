@@ -188,9 +188,6 @@ namespace Flowchart
         {
             if (!IsDragged && e.LeftButton == MouseButtonState.Pressed)
             {
-                int prevRow = Row;
-                int prevCol = Column;
-
                 var bmp = new RenderTargetBitmap((int)this.ActualWidth, (int)this.ActualHeight, 96, 96, PixelFormats.Pbgra32);
                 bmp.Render(Root);
 
@@ -209,11 +206,11 @@ namespace Flowchart
                 IsDragged = false;
                 Diagram.EndDragDrop();
 
-                // Return to original position if drag didn't complete.
-                if (result != DragDropEffects.Move)
+                // HACK: get the new position based on the preview's location
+                if (result == DragDropEffects.Move)
                 {
-                    Row = prevRow;
-                    Column = prevCol;
+                    Row = Grid.GetRow(Diagram.Highlight);
+                    Column = Grid.GetColumn(Diagram.Highlight);
                 }
             }
         }

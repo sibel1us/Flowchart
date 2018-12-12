@@ -57,8 +57,11 @@ namespace Flowchart
             }
         }
 
-        private (double, double, bool) _dragHelper = (0, 0, true);
         public Image Preview { get; set; }
+
+        //private (double, double, bool) _dragHelper = (0, 0, true);
+        private List<double> _gridWidths = new List<double>();
+        private List<double> _gridHeights = new List<double>();
 
         /// <summary>
         /// Children of the root grid.
@@ -160,7 +163,7 @@ namespace Flowchart
         /// <param name="e"></param>
         private void RootGrid_Drop(object sender, DragEventArgs e)
         {
-            _dragHelper = (0, 0, true);
+            //_dragHelper = (0, 0, true);
 
             UpdateDragDrop(sender, e);
             // TODO: handle size constraints
@@ -181,48 +184,50 @@ namespace Flowchart
             Canvas.SetLeft(Preview, mouse.X - relative.X);
             Canvas.SetTop(Preview, mouse.Y - relative.Y);
 
-            UpdateDragdropPreview(Highlight);
-
             Point topLeft = new Point(
-                (dragPos.X - relative.X).Limit(0, RootGrid.ActualWidth),
-                (dragPos.Y - relative.Y).Limit(0, RootGrid.ActualHeight));
+                (dragPos.X - relative.X).Limit(0.0, RootGrid.ActualWidth),
+                (dragPos.Y - relative.Y).Limit(0.0, RootGrid.ActualHeight));
 
-            Point gridPos = GetPositionInGrid(topLeft);
-
-            var newPos = (gridPos.X, gridPos.Y, false);
-
-            if (newPos.Item1 == _dragHelper.Item1 && newPos.Item2 == _dragHelper.Item2)
-            {
-                if (_dragHelper.Item3) return;
-                else newPos.Item3 = true;
-            }
-
-            _dragHelper = newPos;
-
-            Grid.SetRow(Highlight, (int)gridPos.Y);
-            Grid.SetColumn(Highlight, (int)gridPos.X);
+            Point gridPos = GetClosestPositionInGrid(topLeft);
+            UpdateDragdropPreview(Highlight, gridPos);
         }
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="bmp"></param>
-        /// <param name="rowSpan"></param>
-        /// <param name="columnSpan"></param>
+        /// <param name="bmp">Image of the node to use in preview</param>
+        /// <param name="rowSpan">Rowspan of the node being dragged</param>
+        /// <param name="columnSpan">Columnspan of the node being dragged</param>
         public void InitDragDrop(RenderTargetBitmap bmp, int rowSpan, int columnSpan)
         {
-            this.Preview = new Image
+            // Add drag/drop preview image
+            this.RootCanvas.Children.Add(this.Preview = new Image
             {
                 Source = bmp,
                 IsHitTestVisible = false,
-                Visibility = Visibility.Visible
-            };
+                Opacity = 0.8
+            });
 
-            this.RootCanvas.Children.Add(this.Preview);
-
+            // Set highlighter
             Grid.SetRowSpan(this.Highlight, rowSpan);
             Grid.SetColumnSpan(this.Highlight, columnSpan);
             this.Highlight.Visibility = Visibility.Visible;
+
+            // Cache grid cell sizes
+            double accumulatedHeight = 0.0;
+            double accumulatedWidth = 0.0;
+
+            foreach (var rowDefinition in RootGrid.RowDefinitions)
+            {
+                accumulatedHeight += rowDefinition.ActualHeight;
+                _gridHeights.Add(accumulatedHeight);
+            }
+
+            foreach (var columnDefinition in RootGrid.ColumnDefinitions)
+            {
+                accumulatedWidth += columnDefinition.ActualWidth;
+                _gridWidths.Add(accumulatedWidth);
+            }
         }
 
         /// <summary>
@@ -232,15 +237,25 @@ namespace Flowchart
         {
             this.RootCanvas.Children.Remove(this.Preview);
             this.Highlight.Visibility = Visibility.Collapsed;
+
+            _gridHeights.Clear();
+            _gridWidths.Clear();
         }
 
-        private void UpdateDragdropPreview(UIElement elem)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="elem"></param>
+        private void UpdateDragdropPreview(UIElement elem, Point gridPosition)
         {
+            int rowSpan = Grid.GetRowSpan(elem);
+            int columnSpan = Grid.GetColumnSpan(elem);
+
             Rect nodePosition = new Rect(
                 Grid.GetColumn(elem),
                 Grid.GetRow(elem),
-                Grid.GetColumnSpan(elem) - 1,
-                Grid.GetRowSpan(elem) - 1);
+                columnSpan - 1,
+                rowSpan - 1);
 
             foreach (Node other in Children)
             {
@@ -254,6 +269,49 @@ namespace Flowchart
 
                 other.Invalid = nodePosition.IntersectsWith(otherPosition);
             }
+
+            Grid.SetRow(elem, Math.Min((int)gridPosition.Y, this.Rows - rowSpan));
+            Grid.SetColumn(elem, Math.Min((int)gridPosition.X, this.Columns - columnSpan));
+        }
+
+
+        /// <summary>
+        /// Gets the closest row and column of <paramref name="point"/> in <see cref="RootGrid"/>.
+        /// </summary>
+        /// <param name="point"></param>
+        /// <returns></returns>
+        private Point GetClosestPositionInGrid(Point point)
+        {
+            int row = 0;
+            int column = 0;
+
+            double center;
+            double lastY = 0.0;
+            double lastX = 0.0;
+
+            foreach (var rowHeight in _gridHeights)
+            {
+                center = (lastY + rowHeight) / 2;
+
+                if (center > point.Y)
+                    break;
+
+                row++;
+                lastY = rowHeight;
+            }
+
+            foreach (var columnWidth in _gridWidths)
+            {
+                center = (lastX + columnWidth) / 2;
+
+                if (center > point.X)
+                    break;
+
+                column++;
+                lastX = columnWidth;
+            }
+
+            return new Point(column, row);
         }
 
         /// <summary>
@@ -261,25 +319,21 @@ namespace Flowchart
         /// </summary>
         /// <param name="point"></param>
         /// <returns></returns>
-        private Point GetPositionInGrid(Point point)
+        private Point GetAbsolutePositionInGrid(Point point)
         {
             int row = 0;
             int column = 0;
-            double accumulatedHeight = 0.0;
-            double accumulatedWidth = 0.0;
 
-            foreach (var rowDefinition in RootGrid.RowDefinitions)
+            foreach (var rowHeight in _gridHeights)
             {
-                accumulatedHeight += rowDefinition.ActualHeight;
-                if (accumulatedHeight >= point.Y)
+                if (rowHeight > point.Y)
                     break;
                 row++;
             }
 
-            foreach (var columnDefinition in RootGrid.ColumnDefinitions)
+            foreach (var columnWidth in _gridWidths)
             {
-                accumulatedWidth += columnDefinition.ActualWidth;
-                if (accumulatedWidth >= point.X)
+                if (columnWidth > point.X)
                     break;
                 column++;
             }
