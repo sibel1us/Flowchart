@@ -32,7 +32,18 @@ namespace Flowchart
         /// <summary>
         /// The diagram this node belongs to.
         /// </summary>
-        public Diagram Diagram => (Diagram)((Grid)((Grid)this.Parent).Parent).Parent;
+        public Diagram Diagram
+        {
+            get
+            {
+                if (_diagram == null)
+                {
+                    _diagram = (Diagram)((Grid)((Grid)this.Parent).Parent).Parent;
+                }
+                return _diagram;
+            }
+        }
+        private Diagram _diagram;
 
         /// <summary>
         /// Whether this node is currently being dragged (<see cref="Diagram.DraggedNode"/> equals this node).
@@ -85,8 +96,7 @@ namespace Flowchart
             {
                 if (!DesignerProperties.GetIsInDesignMode(this))
                 {
-                    value = Math.Max(value, 0);
-                    value = Math.Min(value, (Diagram?.Rows ?? 1) - RowSpan);
+                    value = value.Limit(0, (Diagram?.Rows ?? 1) - RowSpan);
                 }
 
                 int delta = value - Row;
@@ -107,8 +117,7 @@ namespace Flowchart
             {
                 if (!DesignerProperties.GetIsInDesignMode(this))
                 {
-                    value = Math.Max(value, 0);
-                    value = Math.Min(value, Diagram.Columns - ColumnSpan);
+                    value = value.Limit(0, (Diagram?.Columns ?? 1) - ColumnSpan);
                 }
 
                 int delta = value - Column;
@@ -127,10 +136,10 @@ namespace Flowchart
             get => Grid.GetRowSpan(this);
             set
             {
-                value = Math.Max(value, 1);
-                value = Math.Min(value, Properties.Settings.Default.MaxNodeHeight);
+                value = value.Limit(1, Properties.Settings.Default.MaxNodeHeight);
 
                 int delta = value - RowSpan;
+
                 if (delta == 0) return;
 
                 Grid.SetRowSpan(this, value);
@@ -146,10 +155,10 @@ namespace Flowchart
             get => Grid.GetColumnSpan(this);
             set
             {
-                value = Math.Max(value, 1);
-                value = Math.Min(value, Properties.Settings.Default.MaxNodeWidth);
+                value = value.Limit(1, Properties.Settings.Default.MaxNodeWidth);
 
                 int delta = value - ColumnSpan;
+
                 if (delta == 0) return;
 
                 Grid.SetColumnSpan(this, value);
@@ -158,7 +167,7 @@ namespace Flowchart
         }
 
         /// <summary>
-        /// Root border's background color.
+        /// Color of the node. Border color is inferred (see <see cref="ColorBrightnessConverter"/>).
         /// </summary>
         public Brush NodeColor { get; set; }// = Brushes.Transparent;
 
@@ -171,23 +180,21 @@ namespace Flowchart
             DataContext = this;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="e"></param>
         private void InitiateDrag(MouseEventArgs e)
         {
             if (!IsDragged && e.LeftButton == MouseButtonState.Pressed)
             {
+                int prevRow = Row;
+                int prevCol = Column;
+
                 var bmp = new RenderTargetBitmap((int)this.ActualWidth, (int)this.ActualHeight, 96, 96, PixelFormats.Pbgra32);
                 bmp.Render(Root);
 
-                Diagram.Preview = new Image
-                {
-                    Source = bmp,
-                    IsHitTestVisible = false,
-                    Visibility = Visibility.Visible
-                };
-
-                Diagram.RootCanvas.Children.Add(Diagram.Preview);
-
-                Debug.WriteLine($"{bmp.PixelHeight},{bmp.PixelWidth}");
+                Diagram.InitDragDrop(bmp, RowSpan, ColumnSpan);
 
                 // Save the dragged state to not drag other nodes when a drag passes over them.
                 IsDragged = true;
@@ -196,18 +203,17 @@ namespace Flowchart
                 data.SetData("Position", Mouse.GetPosition(this));
                 data.SetData("Node", this);
 
-                //Debug.WriteLine(Mouse.GetPosition(this));
-
+                // Blocking operation
                 DragDropEffects result = DragDrop.DoDragDrop(this, data, DragDropEffects.Move);
 
                 IsDragged = false;
-                Diagram.RootCanvas.Children.Remove(Diagram.Preview);
+                Diagram.EndDragDrop();
 
                 // Return to original position if drag didn't complete.
                 if (result != DragDropEffects.Move)
                 {
-                    //Row = prevRow;
-                    //Column = prevCol;
+                    Row = prevRow;
+                    Column = prevCol;
                 }
             }
         }
@@ -278,13 +284,13 @@ namespace Flowchart
             {
                 return Properties.Settings.Default.NodeOpacity;
             }
-            else if (thisNode.Invalid == true)
-            {
-                return Properties.Settings.Default.InvalidNodeOpacity;
-            }
             else if (thisNode == draggedNode)
             {
                 return 0.0;
+            }
+            else if (thisNode.Invalid == true)
+            {
+                return Properties.Settings.Default.InvalidNodeOpacity;
             }
             else
             {
@@ -299,7 +305,7 @@ namespace Flowchart
     }
 
     /// <summary>
-    /// 
+    /// Creates a gradient color and scales it with a brightness.
     /// </summary>
     public class ColorBrightnessConverter : IMultiValueConverter
     {
@@ -326,6 +332,9 @@ namespace Flowchart
         }
     }
 
+    /// <summary>
+    /// Returns a new <see cref="CornerRadius"/> that is half of the supplied value.
+    /// </summary>
     public class DoubleToCornerRadiusConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -339,16 +348,23 @@ namespace Flowchart
         }
     }
 
+    /// <summary>§§
+    /// 
+    /// </summary>
     public class IsFocusedToColorConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (value is bool focused)
+            switch (value)
             {
-                return focused ? Colors.DeepSkyBlue : Colors.DarkGray;
+                case false:
+                    return Colors.DarkGray;
+                case true:
+                    return Colors.DeepSkyBlue;
+                default:
+                case null:
+                    return Colors.Transparent;
             }
-
-            return Colors.Transparent;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Flowchart.Helpers;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -56,6 +57,7 @@ namespace Flowchart
             }
         }
 
+        private (double, double, bool) _dragHelper = (0, 0, true);
         public Image Preview { get; set; }
 
         /// <summary>
@@ -85,20 +87,13 @@ namespace Flowchart
             get => RootGrid.RowDefinitions.Count;
             set
             {
-                value = Math.Max(value, 1);
-                value = Math.Min(value, Properties.Settings.Default.MaxDiagramHeight);
-
+                value = value.Limit(1, Properties.Settings.Default.MaxDiagramHeight);
                 int delta = value - Rows;
 
                 if (delta == 0) return;
 
-                if (delta > 0)
-                    for (int i = 0; i < delta; i++)
-                        RootGrid.RowDefinitions.Add(new RowDefinition());
-
-                else
-                    for (int i = 0; i < -delta; i++)
-                        RootGrid.RowDefinitions.RemoveAt(Rows - 1);
+                this.RootGrid.RowDefinitions.SetCount(delta);
+                this.HighlightGrid.RowDefinitions.SetCount(delta);
 
                 DiagramSizeChanged?.Invoke(this, new DiagramGridChangedEventArgs(delta, 0));
             }
@@ -112,20 +107,13 @@ namespace Flowchart
             get => RootGrid.ColumnDefinitions.Count;
             set
             {
-                value = Math.Max(value, 1);
-                value = Math.Min(value, Properties.Settings.Default.MaxDiagramWidth);
-
+                value = value.Limit(1, Properties.Settings.Default.MaxDiagramWidth);
                 int delta = value - Columns;
 
                 if (delta == 0) return;
 
-                if (delta > 0)
-                    for (int i = 0; i < delta; i++)
-                        RootGrid.ColumnDefinitions.Add(new ColumnDefinition());
-
-                else
-                    for (int i = 0; i < -delta; i++)
-                        RootGrid.ColumnDefinitions.RemoveAt(Columns - 1);
+                RootGrid.ColumnDefinitions.SetCount(delta);
+                HighlightGrid.ColumnDefinitions.SetCount(delta);
 
                 DiagramSizeChanged?.Invoke(this, new DiagramGridChangedEventArgs(0, delta));
             }
@@ -143,6 +131,9 @@ namespace Flowchart
             Children = RootGrid.Children;
         }
 
+        /// <summary>
+        /// Doubles the width and height of the grid and scales all nodes appropriately.
+        /// </summary>
         public void ScaleUp()
         {
             Rows = Rows * 2;
@@ -156,8 +147,6 @@ namespace Flowchart
                 node.ColumnSpan *= 2;
             }
         }
-
-        private (double, double, bool) _dragHelper = (0, 0, true);
 
         private void RootGrid_DragOver(object sender, DragEventArgs e)
         {
@@ -177,6 +166,7 @@ namespace Flowchart
             // TODO: handle size constraints
         }
 
+
         /// <summary>
         /// Updates node position and layout while dragging.
         /// </summary>
@@ -186,47 +176,84 @@ namespace Flowchart
         {
             Point mouse = e.GetPosition(RootCanvas);
             Point relative = (Point)e.Data.GetData("Position");
+            Point dragPos = e.GetPosition(RootGrid);
 
             Canvas.SetLeft(Preview, mouse.X - relative.X);
             Canvas.SetTop(Preview, mouse.Y - relative.Y);
 
-            //Debug.WriteLine($"{Canvas.GetLeft(Preview)} {Canvas.GetTop(Preview)} ({mouse} {Preview.IsVisible})");
+            UpdateDragdropPreview(Highlight);
 
-            UpdateNodeStates((Node)e.Data.GetData("Node"));
+            Point topLeft = new Point(
+                (dragPos.X - relative.X).Limit(0, RootGrid.ActualWidth),
+                (dragPos.Y - relative.Y).Limit(0, RootGrid.ActualHeight));
 
-            //Point gridPos = GetPositionInGrid(e.GetPosition(RootGrid));
+            Point gridPos = GetPositionInGrid(topLeft);
 
-            //var newPos = (gridPos.X, gridPos.Y, false);
+            var newPos = (gridPos.X, gridPos.Y, false);
 
-            //if (newPos.Item1 == _dragHelper.Item1 && newPos.Item2 == _dragHelper.Item2)
-            //{
-            //    if (_dragHelper.Item3) return;
-            //    else newPos.Item3 = true;
-            //}
+            if (newPos.Item1 == _dragHelper.Item1 && newPos.Item2 == _dragHelper.Item2)
+            {
+                if (_dragHelper.Item3) return;
+                else newPos.Item3 = true;
+            }
 
-            //_dragHelper = newPos;
+            _dragHelper = newPos;
+
+            Grid.SetRow(Highlight, (int)gridPos.Y);
+            Grid.SetColumn(Highlight, (int)gridPos.X);
         }
 
-        private void UpdateNodeStates(Node node)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="bmp"></param>
+        /// <param name="rowSpan"></param>
+        /// <param name="columnSpan"></param>
+        public void InitDragDrop(RenderTargetBitmap bmp, int rowSpan, int columnSpan)
         {
-            //Rect nodePosition = new Rect(
-            //    node.Column,
-            //    node.Row,
-            //    node.ColumnSpan - 1,
-            //    node.RowSpan - 1);
+            this.Preview = new Image
+            {
+                Source = bmp,
+                IsHitTestVisible = false,
+                Visibility = Visibility.Visible
+            };
 
-            //foreach (Node other in Children)
-            //{
-            //    if (other == node) continue;
+            this.RootCanvas.Children.Add(this.Preview);
 
-            //    Rect otherPosition = new Rect(
-            //        other.Column,
-            //        other.Row,
-            //        other.ColumnSpan - 1,
-            //        other.RowSpan - 1);
+            Grid.SetRowSpan(this.Highlight, rowSpan);
+            Grid.SetColumnSpan(this.Highlight, columnSpan);
+            this.Highlight.Visibility = Visibility.Visible;
+        }
 
-            //    other.Invalid = nodePosition.IntersectsWith(otherPosition);
-            //}
+        /// <summary>
+        /// 
+        /// </summary>
+        public void EndDragDrop()
+        {
+            this.RootCanvas.Children.Remove(this.Preview);
+            this.Highlight.Visibility = Visibility.Collapsed;
+        }
+
+        private void UpdateDragdropPreview(UIElement elem)
+        {
+            Rect nodePosition = new Rect(
+                Grid.GetColumn(elem),
+                Grid.GetRow(elem),
+                Grid.GetColumnSpan(elem) - 1,
+                Grid.GetRowSpan(elem) - 1);
+
+            foreach (Node other in Children)
+            {
+                if (other == elem) continue;
+
+                Rect otherPosition = new Rect(
+                    other.Column,
+                    other.Row,
+                    other.ColumnSpan - 1,
+                    other.RowSpan - 1);
+
+                other.Invalid = nodePosition.IntersectsWith(otherPosition);
+            }
         }
 
         /// <summary>
