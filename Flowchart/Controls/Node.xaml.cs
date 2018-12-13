@@ -1,5 +1,4 @@
-﻿using Flowchart.Helpers;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -16,6 +15,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Flowchart.Helpers;
 
 namespace Flowchart
 {
@@ -28,11 +28,24 @@ namespace Flowchart
         public event EventHandler<NodePositionChangedEventArgs> NodePositionChanged;
         public event PropertyChangedEventHandler PropertyChanged;
 
+        private Diagram _diagram = null;
+        private AdornerLayer _adornerLayer = null;
+        private NodeResizeAdorner _nodeAdorner = null;
+
         /// <summary>
         /// The diagram this node belongs to.
         /// </summary>
         public Diagram Diagram => _diagram ?? (_diagram = (Diagram)((Grid)((Grid)this.Parent).Parent).Parent);
-        private Diagram _diagram;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        private AdornerLayer AdornerLayer => _adornerLayer ?? (_adornerLayer = AdornerLayer.GetAdornerLayer(this.Root));
+
+        /// <summary>
+        /// The adorner for this node, reference saved to remove it later.
+        /// </summary>
+        private NodeResizeAdorner ResizeAdorner => _nodeAdorner ?? (_nodeAdorner = new NodeResizeAdorner(Root));
 
         /// <summary>
         /// Whether this node is currently being dragged (<see cref="Diagram.DraggedNode"/> equals this node).
@@ -188,6 +201,7 @@ namespace Flowchart
 
                 // Save the dragged state to not drag other nodes when a drag passes over them.
                 IsDragged = true;
+                this.AdornerLayer.Remove(this.ResizeAdorner);
 
                 DataObject data = new DataObject();
                 data.SetData("Position", Mouse.GetPosition(this));
@@ -205,6 +219,8 @@ namespace Flowchart
                     Row = Grid.GetRow(Diagram.Highlight);
                     Column = Grid.GetColumn(Diagram.Highlight);
                 }
+
+                this.AdornerLayer.Add(this.ResizeAdorner);
             }
         }
 
@@ -226,6 +242,16 @@ namespace Flowchart
         private void Root_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             Root.Focus();
+        }
+
+        private void Root_GotFocus(object sender, RoutedEventArgs e)
+        {
+            this.AdornerLayer.Add(this.ResizeAdorner);
+        }
+
+        private void Root_LostFocus(object sender, RoutedEventArgs e)
+        {
+            this.AdornerLayer.Remove(this.ResizeAdorner);
         }
     }
 
@@ -257,6 +283,38 @@ namespace Flowchart
 
         public int RowDelta { get; }
         public int ColumnDelta { get; }
+    }
+
+    public class NodeResizeAdorner : Adorner
+    {
+        public NodeResizeAdorner(UIElement element) : base(element) { }
+
+        protected override void OnIsMouseDirectlyOverChanged(DependencyPropertyChangedEventArgs e)
+        {
+            Rect nodeRect = new Rect(this.AdornedElement.RenderSize);
+            Point mousePos = Mouse.GetPosition(this.AdornedElement);
+
+            this.Cursor =
+                (mousePos.X > nodeRect.Width / 2) == (mousePos.Y > nodeRect.Height / 2)
+                ? Cursors.SizeNWSE  // Top left or bottom right
+                : Cursors.SizeNESW; // Top right or bottom left
+
+            base.OnIsMouseDirectlyOverChanged(e);
+        }
+
+        protected override void OnRender(DrawingContext drawingContext)
+        {
+            Rect nodeRect = new Rect(this.AdornedElement.RenderSize);
+
+            var color = Brushes.White;
+            var stroke = new Pen(Brushes.Black, 1);
+            double size = 5.0;
+
+            drawingContext.DrawEllipse(color, stroke, nodeRect.TopLeft, size, size);
+            drawingContext.DrawEllipse(color, stroke, nodeRect.TopRight, size, size);
+            drawingContext.DrawEllipse(color, stroke, nodeRect.BottomLeft, size, size);
+            drawingContext.DrawEllipse(color, stroke, nodeRect.BottomRight, size, size);
+        }
     }
 
     /// <summary>

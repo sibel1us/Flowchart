@@ -30,8 +30,11 @@
             Focusable="True"
             BorderThickness="1"
             Margin="{Binding Path=Diagram.NodeMargin}"
+            
             PreviewMouseMove="Root_PreviewMouseMove"
-            PreviewMouseLeftButtonDown="Root_PreviewMouseLeftButtonDown">
+            PreviewMouseLeftButtonDown="Root_PreviewMouseLeftButtonDown"
+            GotFocus="Root_GotFocus"
+            LostFocus="Root_LostFocus">
         <Border.Effect>
             <DropShadowEffect Opacity="1"
                               BlurRadius="8"

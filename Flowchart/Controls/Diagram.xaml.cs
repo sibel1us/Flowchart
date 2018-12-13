@@ -340,6 +340,22 @@ namespace Flowchart
 
             return new Point(column, row);
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void RootGrid_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.Source == RootGrid)
+            {
+                // HACK: clear focus from nodes by setting grid temporarily focusable
+                this.RootGrid.Focusable = true;
+                this.RootGrid.Focus();
+                this.RootGrid.Focusable = false;
+            }
+        }
     }
 
     /// <summary>

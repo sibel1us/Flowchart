@@ -22,7 +22,8 @@
               SnapsToDevicePixels="True"
               AllowDrop="True"
               DragOver="RootGrid_DragOver"
-              Drop="RootGrid_Drop">
+              Drop="RootGrid_Drop"
+              UIElement.MouseDown="RootGrid_MouseDown">
         </Grid>
         <Canvas x:Name="RootCanvas"/>
     </Grid>
